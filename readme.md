@@ -54,51 +54,36 @@ static fs_node_t file_system[MAX_NODES];
 
 ```
 ### 4. Design / System Workflow
-
-graph TD 
-    %% Define Color Styles
-    classDef terminal fill:#E6F2FF,stroke:#4A90E2,stroke-width:2px;
-    classDef kernel fill:#FFF0F5,stroke:#D0021B,stroke-width:2px;
-    classDef myProgram fill:#E2F9E5,stroke:#1EA83C,stroke-width:2px;
-    classDef ramStorage fill:#FFFDF0,stroke:#F5A623,stroke-width:2px;
-
-    %% 1. User Application Layer
-    subgraph UserSpaceApp ["User Space (Applications)"]
-        A["Terminal Command <br/> <i>(e.g., ls mnt/ OR cat mnt/hello.txt)</i>"]
+```mermaid
+graph TD
+    subgraph UserSpaceApp["User Space (Applications)"]
+        A["Terminal Command<br/>e.g. ls mnt/ or cat mnt/hello.txt"]
     end
 
-    %% 2. Kernel space layer
-    subgraph KernelSpace ["Kernel Space (Protected OS Core)"]
-        B["1. Virtual File System (VFS) <br/> <i>Intercepts POSIX calls (open, read, write)</i>"]
-        C["2. FUSE Kernel Driver <br/> <i>Redirects commands to userspace mount</i>"]
+    subgraph KernelSpace["Kernel Space (Protected OS Core)"]
+        B["Virtual File System - VFS<br/>Intercepts POSIX calls: open, read, write"]
+        C["FUSE Kernel Driver<br/>Redirects commands to userspace mount"]
     end
 
-    %% 3. Your C Program Layer
-    subgraph MyFilesystem ["User Space (Your memfs Program)"]
-        D["3. /dev/fuse Channel <br/> <i>Your C app reads request packets</i>"]
-        E["4. Callback Switchboard <br/> <i>fuse_operations matches call to C function</i>"]
-        
-        subgraph MyCallbacks ["Your Custom Callback Functions"]
-            F["fs_getattr() <br/> <i>Metadata</i>"]
-            G["fs_readdir() <br/> <i>Directory List</i>"]
-            H["fs_read() <br/> <i>Read Data</i>"]
-            I["fs_write() <br/> <i>Write Data</i>"]
+    subgraph MyFilesystem["User Space (Your memfs Program)"]
+        D["/dev/fuse Channel<br/>Your C app reads request packets"]
+        E["Callback Switchboard<br/>fuse_operations matches call to C function"]
+
+        subgraph MyCallbacks["Your Custom Callback Functions"]
+            F["fs_getattr<br/>Metadata"]
+            G["fs_readdir<br/>Directory List"]
+            H["fs_read<br/>Read Data"]
+            I["fs_write<br/>Write Data"]
         end
-        
-        J[("5. In-Memory Array <br/> file_system[64] in RAM")]
+
+        J[("In-Memory Array<br/>file_system[64] in RAM")]
     end
 
-    %% Apply Styles to Nodes and Subgraphs (No Semicolons)
-    class UserSpaceApp,A terminal
-    class KernelSpace,B,C kernel
-    class MyFilesystem,D,E myProgram
-    class MyCallbacks,F,G,H,I,J ramStorage
-
-    %% --- REQUEST PATH ---
-    A ==>|"1. Executes Call"| B
-    B ==>|"2. Matches Mount"| C
-    C ==>|"3. Serializes via /dev/fuse"| D
-    D ==>|"4. Unpacks & Dispatches"| E
+    %% Request path
+    A ==>|"Step 1 - Executes call"| B
+    B ==>|"Step 2 - Matches mount"| C
+    C ==>|"Step 3 - Serializes via /dev/fuse"| D
+    D ==>|"Step 4 - Unpacks and dispatches"| E
     E --> F
     E --> G
     E --> H
@@ -108,11 +93,11 @@ graph TD
     H <==>|"Copies from"| J
     I <==>|"Writes to"| J
 
-    %% --- RESPONSE PATH ---
+    %% Response path
     J -.->|"Raw buffer bytes / status"| E
     E -.-> D
     D -.->|"Returned up to kernel"| C
     C -.-> B
     B -.->|"Terminal prints output"| A
-
+```
 
