@@ -73,12 +73,35 @@ int get_parent_dir(const char *path, char *parent_out) {
         return 1;
     }
 }
+
+
+
+/**
+ * Removes a node at index idx and compacts the array.
+ * Shifts all subsequent elements left by 1 position.
+ */
+ int remove_node(int idx) {
+    if (idx < 0 || idx >= total_nodes) {
+        return -EINVAL;
+    }
+
+    for (int i = idx; i < total_nodes - 1; i++) {
+        file_system[i] = file_system[i + 1];
+    }
+
+    // Zero out the vacated final slot
+    memset(&file_system[total_nodes - 1], 0, sizeof(fs_node_t));
+    total_nodes--;
+    return 0;
+}
 /* FUSE Callbacks  */
 
 /**
  * fs_getattr:
  * Inspects node attributes for stat() / ls.
  */
+
+
 
 static int fs_getattr(const char *path, struct stat *st, struct fuse_file_info *fi) {
     (void) fi;
@@ -331,6 +354,49 @@ static int fs_write(const char *path, const char *buf, size_t size, off_t offset
     return 0;
 }
 
+static int fs_unlink(const char *path) {
+    printf("[DEBUG] unlink called for path: %s\n", path);
+
+    int idx = find_node(path);
+    if (idx == -1) {
+        return -ENOENT;
+    }
+
+    // POSIX forbids unlinking directories with unlink()
+    if (S_ISDIR(file_system[idx].mode)) {
+        return -EISDIR;
+    }
+
+    return remove_node(idx);
+}
+static int fs_rmdir(const char *path) {
+    printf("[DEBUG] rmdir called for path: %s\n", path);
+
+    // Root directory cannot be removed
+    if (strcmp(path, "/") == 0) {
+        return -EBUSY;
+    }
+
+    int idx = find_node(path);
+    if (idx == -1) {
+        return -ENOENT;
+    }
+
+    if (!S_ISDIR(file_system[idx].mode)) {
+        return -ENOTDIR;
+    }
+
+    // Check if the directory is empty:
+    // If any node in the array is an immediate child of this path, reject with -ENOTEMPTY.
+    char dummy_name[MAX_PATH_LEN];
+    for (int i = 0; i < total_nodes; i++) {
+        if (get_immediate_child_name(path, file_system[i].path, dummy_name)) {
+            return -ENOTEMPTY;
+        }
+    }
+
+    return remove_node(idx);
+}
 /* ========================================================================= */
 /* Registered Operations Table                                               */
 /* ========================================================================= */
@@ -344,4 +410,6 @@ struct fuse_operations memfs_operations = {
     .truncate = fs_truncate,
     .utimens  = fs_utimens,
     .open     = fs_open,
+    .unlink   = fs_unlink,     
+    .rmdir    = fs_rmdir
 };

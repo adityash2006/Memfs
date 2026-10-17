@@ -33,8 +33,11 @@ extern int total_nodes;
 
 int find_node(const char *path);
 int add_node(const char *path, mode_t mode);
-
+int remove_node(int idx);
+int get_parent_dir(const char *path, char *parent_out);
+int get_immediate_child_name(const char *parent_dir, const char *child_path, char *out_name);
 
 extern struct fuse_operations memfs_operations;
+
 
 #endif 
