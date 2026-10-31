@@ -101,3 +101,99 @@ graph TD
     B -.->|"Terminal prints output"| A
 ```
 
+### 5. Project Build
+
+From the project root directory (`~/memoryProjectC/`):
+
+```bash
+make
+```
+
+This creates an executable binary named `memfs` in the project root directory.
+
+## Usage
+
+### Step 1: Mount & Run in Foreground (Terminal 1)
+
+From your project root directory (`~/memoryProjectC`):
+
+1. Ensure the mount directory exists:
+
+   ```bash
+   mkdir -p mnt
+   ```
+
+2. Mount the filesystem in foreground debug mode:
+
+   ```bash
+   ./memfs -f mnt
+   ```
+
+   The `-f` flag tells FUSE to run in the foreground so it stays running in Terminal 1 and prints all `[DEBUG]` logs live in real time as commands are executed.
+
+### Step 2: Test Filesystem Commands (Terminal 2)
+
+Keep Terminal 1 running, open a second terminal window, navigate to `mnt`, and test your commands:
+
+```bash
+cd ~/memoryProjectC/mnt
+```
+
+**1. Test Directory Creation & Subdirectories (Phase 4)**
+
+```bash
+mkdir testdir
+ls -la
+mkdir testdir/subfolder
+ls -la testdir
+```
+
+**2. Test File Creation & Overwrite/Append (Phases 3 & 4)**
+
+```bash
+touch file1.txt
+echo "Hello from memfs!" > file1.txt
+cat file1.txt
+
+echo "Appending a second line" >> file1.txt
+cat file1.txt
+```
+
+**3. Create a file inside a subdirectory**
+
+```bash
+echo "Nested file contents" > testdir/nested.txt
+cat testdir/nested.txt
+```
+
+**4. Test Deletion & Rmdir (Phase 5)**
+
+```bash
+rm file1.txt
+ls -la
+
+# Try removing a non-empty directory (should fail with 'Directory not empty')
+rmdir testdir
+
+# Remove contents and then clean up the directory
+rm testdir/nested.txt
+rmdir testdir/subfolder
+rmdir testdir
+```
+
+Notice how Terminal 1 prints all the corresponding `getattr`, `readdir`, `mkdir`, `write`, `read`, and `unlink` debug traces as you type each command.
+
+### Step 3: Cleanly Unmount
+
+When you are done testing, **do not** close Terminal 1 with `Ctrl+C` directly while it is in use.
+
+In Terminal 2, run:
+
+```bash
+cd ~/memoryProjectC
+fusermount3 -u mnt
+```
+
+Terminal 1 will automatically exit cleanly and return to the shell prompt.
+
+
